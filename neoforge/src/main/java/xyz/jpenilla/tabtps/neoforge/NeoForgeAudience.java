@@ -1,6 +1,7 @@
 package xyz.jpenilla.tabtps.neoforge;
 
 import java.util.IdentityHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -12,6 +13,8 @@ import net.kyori.adventure.permission.PermissionChecker;
 import net.kyori.adventure.pointer.Pointers;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
+import net.kyori.adventure.translation.GlobalTranslator;
+import net.kyori.adventure.translation.Translator;
 import net.kyori.adventure.util.TriState;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.HolderLookup;
@@ -25,11 +28,15 @@ public abstract class NeoForgeAudience implements Audience {
   }
 
   static net.minecraft.network.chat.Component asNative(final Component component, final HolderLookup.Provider registries) {
+    return asNative(component, Locale.getDefault(), registries);
+  }
+
+  static net.minecraft.network.chat.Component asNative(final Component component, final Locale locale, final HolderLookup.Provider registries) {
     if (component == Component.empty()) {
       return net.minecraft.network.chat.Component.empty();
     }
     return net.minecraft.network.chat.Component.Serializer.fromJson(
-      GsonComponentSerializer.gson().serializeToTree(component),
+      GsonComponentSerializer.gson().serializeToTree(GlobalTranslator.render(component, locale)),
       registries
     );
   }
@@ -61,33 +68,33 @@ public abstract class NeoForgeAudience implements Audience {
 
     @Override
     public void sendMessage(final @NonNull Component message) {
-      this.player.sendSystemMessage(asNative(message, this.registries()));
+      this.player.sendSystemMessage(asNative(message, this.locale(), this.registries()));
     }
 
     @Override
     public void sendActionBar(final @NonNull Component message) {
-      this.player.sendSystemMessage(asNative(message, this.registries()), true);
+      this.player.sendSystemMessage(asNative(message, this.locale(), this.registries()), true);
     }
 
     @Override
     public void sendPlayerListHeader(final @NonNull Component header) {
-      this.player.setTabListHeaderFooter(asNative(header, this.registries()), this.player.getTabListFooter());
+      this.player.setTabListHeaderFooter(asNative(header, this.locale(), this.registries()), this.player.getTabListFooter());
     }
 
     @Override
     public void sendPlayerListFooter(final @NonNull Component footer) {
-      this.player.setTabListHeaderFooter(this.player.getTabListHeader(), asNative(footer, this.registries()));
+      this.player.setTabListHeaderFooter(this.player.getTabListHeader(), asNative(footer, this.locale(), this.registries()));
     }
 
     @Override
     public void sendPlayerListHeaderAndFooter(final @NonNull Component header, final @NonNull Component footer) {
-      this.player.setTabListHeaderFooter(asNative(header, this.registries()), asNative(footer, this.registries()));
+      this.player.setTabListHeaderFooter(asNative(header, this.locale(), this.registries()), asNative(footer, this.locale(), this.registries()));
     }
 
     @Override
     public void showBossBar(final @NonNull BossBar bar) {
       this.bossBars.computeIfAbsent(bar, key -> {
-        final ServerBossEvent event = new ServerBossEvent(asNative(key.name(), this.registries()), color(key.color()), overlay(key.overlay()));
+        final ServerBossEvent event = new ServerBossEvent(asNative(key.name(), this.locale(), this.registries()), color(key.color()), overlay(key.overlay()));
         event.setProgress(key.progress());
         updateFlags(event, key);
         key.addListener(this);
@@ -108,7 +115,7 @@ public abstract class NeoForgeAudience implements Audience {
     public void bossBarNameChanged(final @NonNull BossBar bar, final @NonNull Component oldName, final @NonNull Component newName) {
       final ServerBossEvent event = this.bossBars.get(bar);
       if (event != null) {
-        event.setName(asNative(newName, this.registries()));
+        event.setName(asNative(newName, this.locale(), this.registries()));
       }
     }
 
@@ -151,6 +158,11 @@ public abstract class NeoForgeAudience implements Audience {
 
     private HolderLookup.Provider registries() {
       return this.player.server.registryAccess();
+    }
+
+    private Locale locale() {
+      final Locale locale = Translator.parseLocale(this.player.getLanguage());
+      return locale == null ? Locale.ENGLISH : locale;
     }
   }
 
