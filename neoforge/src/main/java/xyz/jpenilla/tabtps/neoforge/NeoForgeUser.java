@@ -24,10 +24,9 @@
 package xyz.jpenilla.tabtps.neoforge;
 
 import net.kyori.adventure.audience.Audience;
-import net.kyori.adventure.permission.PermissionChecker;
-import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences;
 import net.kyori.adventure.text.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.server.permission.PermissionAPI;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.framework.qual.DefaultQualifier;
 import xyz.jpenilla.tabtps.common.AbstractUser;
@@ -35,10 +34,12 @@ import xyz.jpenilla.tabtps.common.AbstractUser;
 @DefaultQualifier(NonNull.class)
 public final class NeoForgeUser extends AbstractUser<ServerPlayer> {
   private final TabTPSNeoForge tabTPSNeoForge;
+  private final Audience audience;
 
   private NeoForgeUser(final TabTPSNeoForge tabTPS, final ServerPlayer player) {
     super(tabTPS.tabTPS(), player, player.getUUID());
     this.tabTPSNeoForge = tabTPS;
+    this.audience = new NeoForgeAudience.Player(player, this::hasPermission);
   }
 
   public static NeoForgeUser from(final TabTPSNeoForge tabTPSNeoForge, final ServerPlayer player) {
@@ -47,7 +48,7 @@ public final class NeoForgeUser extends AbstractUser<ServerPlayer> {
 
   @Override
   public Component displayName() {
-    return MinecraftServerAudiences.of(this.base().getServer()).asAdventure(this.base().getDisplayName());
+    return NeoForgeAudience.asAdventure(this.base().getDisplayName(), this.base().server.registryAccess());
   }
 
   @Override
@@ -62,13 +63,11 @@ public final class NeoForgeUser extends AbstractUser<ServerPlayer> {
 
   @Override
   public boolean hasPermission(final String permissionString) {
-    return this.audience().get(PermissionChecker.POINTER)
-      .orElseThrow()
-      .test(permissionString);
+    return PermissionAPI.getPermission(this.base(), this.tabTPSNeoForge.permissionNode(permissionString));
   }
 
   @Override
   public Audience audience() {
-    return MinecraftServerAudiences.of(this.base().getServer()).audience(this.base());
+    return this.audience;
   }
 }

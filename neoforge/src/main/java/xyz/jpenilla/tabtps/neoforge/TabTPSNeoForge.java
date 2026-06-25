@@ -23,14 +23,14 @@
  */
 package xyz.jpenilla.tabtps.neoforge;
 
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences;
+import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -75,6 +75,7 @@ public final class TabTPSNeoForge implements TabTPSPlatform<ServerPlayer, NeoFor
   private final NeoForgeUserService userService;
   private final TabTPS tabTPS;
   private final NeoForgeServerCommandManager<Commander> commandManager;
+  private final Map<String, PermissionNode<Boolean>> permissionNodes = new ConcurrentHashMap<>();
   private MinecraftServer server;
 
   public TabTPSNeoForge(final ModContainer modContainer) {
@@ -147,15 +148,19 @@ public final class TabTPSNeoForge implements TabTPSPlatform<ServerPlayer, NeoFor
 
     NeoForge.EVENT_BUS.addListener((PermissionGatherEvent.Nodes event) -> {
       final List<PermissionNode<?>> permissions = new ArrayList<>(List.of(
-        node(Constants.PERMISSION_COMMAND_ERROR_HOVER_STACKTRACE)
+        this.permissionNode(Constants.PERMISSION_COMMAND_ERROR_HOVER_STACKTRACE)
       ));
       for (final String permission : this.tabTPS.configManager().displayConfigsByPermission().keySet()) {
-        permissions.add(node(permission));
+        permissions.add(this.permissionNode(permission));
       }
       event.addNodes(permissions);
     });
 
     this.logger.info("Done initializing TabTPS.");
+  }
+
+  PermissionNode<Boolean> permissionNode(final String permission) {
+    return this.permissionNodes.computeIfAbsent(permission, TabTPSNeoForge::node);
   }
 
   private static PermissionNode<Boolean> node(final String permission) {
@@ -227,13 +232,5 @@ public final class TabTPSNeoForge implements TabTPSPlatform<ServerPlayer, NeoFor
   @Override
   public @NonNull NeoForgeServerCommandManager<Commander> commandManager() {
     return this.commandManager;
-  }
-
-  @Override
-  public Throwable asComponentMessageThrowable(final Throwable thr) {
-    if (thr instanceof CommandSyntaxException e) {
-      return (Throwable) MinecraftServerAudiences.of(this.server()).asComponentThrowable(e);
-    }
-    return thr;
   }
 }

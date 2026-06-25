@@ -24,11 +24,11 @@
 package xyz.jpenilla.tabtps.neoforge.command;
 
 import net.kyori.adventure.audience.Audience;
-import net.kyori.adventure.platform.modcommon.MinecraftServerAudiences;
 import net.minecraft.commands.CommandSourceStack;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.framework.qual.DefaultQualifier;
 import xyz.jpenilla.tabtps.common.command.ConsoleCommander;
+import xyz.jpenilla.tabtps.neoforge.NeoForgeAudience;
 
 @DefaultQualifier(NonNull.class)
 public record NeoForgeConsoleCommander(CommandSourceStack commandSourceStack) implements ConsoleCommander {
@@ -39,6 +39,6 @@ public record NeoForgeConsoleCommander(CommandSourceStack commandSourceStack) im
 
   @Override
   public Audience audience() {
-    return MinecraftServerAudiences.of(this.commandSourceStack.getServer()).audience(this.commandSourceStack);
+    return new NeoForgeAudience.CommandSource(this.commandSourceStack);
   }
 }
